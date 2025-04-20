@@ -55,8 +55,68 @@
   <script>
     const path = require('path');
     const os = require('os');
+    const { ipcRenderer } = require('electron');
 
-    document.getElementById('output-path').innerText = path.join(os.homedir(), 'imageshrink');
+    const form = document.getElementById('image-form');
+    const slider = document.getElementById('slider');
+    const img = document.getElementById('img');
+
+    document.getElementById('output-path').innerText = path.join(
+      os.homedir(),
+      "Developer",
+      "javascript-work",
+      "electron-react-work",
+      "udemy",
+      "Electron-From-Scratch",
+      "bradtraversy-electron-course-files",
+      "image-shrink",
+      "resized"
+    );
+
+    //  OnSubmit
+    form.addEventListener('submit', e => {
+      e.preventDefault();
+
+      if (img.files.length === 0) {
+        alert('Please choose an image');
+        return;
+      }
+      if (slider.value < 0 || slider.value > 100) {
+        alert('Please choose a quality between 0 and 100');
+        return;
+      }
+      if (!img.files[0].type.startsWith('image/')) {
+        alert('Please choose a valid image file');
+        return;
+      }
+      if (img.files[0].size > 350000) {
+        alert('Please choose an image smaller than 350KB');
+        return;
+      }
+
+      const imgFile = img.files[0];
+      const imgPath = path.join(os.homedir(), 'Pictures', 'Avatars', imgFile.name);
+      const imgName = imgFile.name.split('.').slice(0, -1).join('.');
+      const quality = slider.value;
+
+      console.log('img: ', img.files[0]);
+      console.log('Image:', imgPath);
+      console.log('Quality:', quality);
+
+      // NOTE: Removes all listeners to prevent multiple events
+      // ipcRenderer.removeAllListeners('image:done');
+
+      // Send to main process
+      ipcRenderer.send('image:resize', {
+        imgPath,
+        quality
+      });
+    });
+
+    //  On done
+    ipcRenderer.once('image:done', (e, path) => {
+      M.toast({ html: `Image resized to ${slider.value}% quality` });
+    });
   </script>
 </body>
 

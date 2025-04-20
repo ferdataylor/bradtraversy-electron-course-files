@@ -1,18 +1,16 @@
-// const path = require("path");
+const path = require("path");
+const os = require("os");
+const { app, BrowserWindow, Menu, ipcMain, shell } = require("electron");
+const imagemin = require("imagemin").default || require("imagemin");
+const imageminMozjpeg =
+  require("imagemin-mozjpeg").default || require("imagemin-mozjpeg");
+const imageminPngquant =
+  require("imagemin-pngquant").default || require("imagemin-pngquant");
+const slash = require("slash").default || require("slash");
+const log = require("electron-log");
 
-// // Import the reload logic
-// require("./utils/reload")();
-
-const {
-  app,
-  BrowserWindow,
-  Menu,
-  ipcMain,
-  globalShortcut,
-} = require("electron");
-
-let envType = "development";
-// let envType = "production";
+// let envType = "development";
+let envType = "production";
 
 // Set the environment variable to development
 process.env.NODE_ENV = envType;
@@ -20,19 +18,18 @@ process.env.NODE_ENV = envType;
 const isDev = process.env.NODE_ENV !== "production" ? true : false;
 const isMac = process.platform === "darwin" ? true : false;
 const isWin = process.platform === "win32" ? true : false;
-const isLinux = process.platform === "linux" ? true : false;
 
 let mainWindow;
 let aboutWindow;
 
-// Another way to ensure the createMainWindow function is called when the app is ready
+// NOTE: Another way to ensure the createMainWindow function is called when the app is ready
 // app.on("ready", createMainWindow);
 
 function createMainWindow() {
   function createWindow() {
     mainWindow = new BrowserWindow({
       title: "Image Shrink",
-      width: isDev ? 800 : 600,
+      width: isDev ? 1024 : 800,
       height: 600,
       icon: `${__dirname}/assets/icons/png/Icon_256x256.png`,
       resizable: isDev,
@@ -48,7 +45,7 @@ function createMainWindow() {
       mainWindow.webContents.openDevTools();
     }
 
-    // Load the index.html file from the app directory
+    // NOTE: Load the index.html file from the app directory
     // mainWindow.loadURL(`file://${__dirname}/app/index.html`);
 
     // Load the index.html file using the path module to resolve the correct path.
@@ -70,7 +67,7 @@ function createAboutWindow() {
       backgroundColor: "#fff",
     });
 
-    // Load the index.html file from the app directory
+    // NOTE: Load the index.html file from the app directory
     // mainWindow.loadURL(`file://${__dirname}/app/index.html`);
 
     // Load the index.html file using the path module to resolve the correct path.
@@ -88,7 +85,7 @@ app.on("ready", () => {
   const mainMenu = Menu.buildFromTemplate(menu);
   Menu.setApplicationMenu(mainMenu);
 
-  // We can get rid of these global shortcuts because
+  // NOTE: We can get rid of these global shortcuts because
   // the shortcuts are enabled in the developer menu
   // in the menu bar by default.
   // globalShortcut.register("CmdOrCtrl+R", () => {
@@ -152,7 +149,7 @@ const menu = [
     : []),
 ];
 
-// This is another way to add the developer menu
+// NOTE: This is another way to add the developer menu
 // if (isDev) {
 //   menu.push({
 //     label: "Developer",
@@ -181,3 +178,53 @@ app.on("window-all-closed", () => {
     app.quit();
   }
 });
+
+// Listen for the image:resize event from the renderer process
+ipcMain.on("image:resize", async (e, options) => {
+  try {
+    options.dest = path.join(
+      os.homedir(),
+      "Developer",
+      "javascript-work",
+      "electron-react-work",
+      "udemy",
+      "Electron-From-Scratch",
+      "bradtraversy-electron-course-files",
+      "image-shrink",
+      "resized"
+    );
+
+    await shrinkImage(options);
+    // Example of sending a response back to the renderer process
+    e.sender.send("image:done");
+  } catch (error) {
+    console.error("Error resizing image:", error);
+    e.sender.send("image:error", error.message);
+  }
+});
+
+async function shrinkImage({ imgPath, quality, dest }) {
+  try {
+    const pngQuality = quality === "high" ? 80 : quality === "medium" ? 60 : 40;
+    // normalizedImgPath = path.normalize(imgPath).replace(/\\/g, "/");
+    const file = await imagemin([slash(imgPath)], {
+      destination: dest,
+      plugins: [
+        imageminMozjpeg({ quality }),
+        imageminPngquant({
+          quality: [pngQuality / 100, pngQuality / 100],
+        }),
+      ],
+    });
+
+    console.log("Image: ", file);
+    log.info("Image: ", file);
+
+    shell.openPath(dest);
+    mainWindow.webContents.send("image:done");
+  } catch (error) {
+    console.error("Error resizing image:", error);
+    log.error("Error resizing image:", error);
+    throw error;
+  }
+}
