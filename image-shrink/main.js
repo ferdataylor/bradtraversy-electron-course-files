@@ -20,6 +20,10 @@ const isWin = process.platform === "win32" ? true : false;
 const isLinux = process.platform === "linux" ? true : false;
 
 let mainWindow;
+let aboutWindow;
+
+// Another way to ensure the createMainWindow function is called when the app is ready
+// app.on("ready", createMainWindow);
 
 function createMainWindow() {
   function createWindow() {
@@ -43,8 +47,27 @@ function createMainWindow() {
   createWindow();
 }
 
-// // Ensure the createMainWindow function is called when the app is ready
-// app.on("ready", createMainWindow);
+function createAboutWindow() {
+  function createWindow() {
+    aboutWindow = new BrowserWindow({
+      title: "About ImageShrink",
+      width: 800,
+      height: 600,
+      icon: `${__dirname}/assets/icons/png/Icon_256x256.png`,
+      resizable: false,
+      backgroundColor: "#fff",
+    });
+
+    // Load the index.html file from the app directory
+    // mainWindow.loadURL(`file://${__dirname}/app/index.html`);
+
+    // Load the index.html file using the path module to resolve the correct path.
+    aboutWindow.loadFile("./app/about.html");
+  }
+
+  // Call createWindow when the app is ready
+  createWindow();
+}
 
 // Garbage collection, point to null when closed
 app.on("ready", () => {
@@ -53,13 +76,15 @@ app.on("ready", () => {
   const mainMenu = Menu.buildFromTemplate(menu);
   Menu.setApplicationMenu(mainMenu);
 
-  globalShortcut.register("CmdOrCtrl+R", () => {
-    mainWindow.reload();
-  });
-
-  globalShortcut.register(isMac ? "Command+Alt+I" : "Ctrl+Shift+I", () => {
-    mainWindow.toggleDevTools();
-  });
+  // We can get rid of these global shortcuts because
+  // the shortcuts are enabled in the developer menu
+  // in the menu bar by default.
+  // globalShortcut.register("CmdOrCtrl+R", () => {
+  //   mainWindow.reload();
+  // });
+  // globalShortcut.register(isMac ? "Command+Alt+I" : "Ctrl+Shift+I", () => {
+  //   mainWindow.toggleDevTools();
+  // });
 
   mainWindow.on("ready", () => {
     mainWindow = null;
@@ -67,57 +92,48 @@ app.on("ready", () => {
 });
 
 const menu = [
-  ...(isMac ? [{ role: "appMenu" }] : []),
-  {
-    label: "File",
-    submenu: [
-      {
-        label: "Quit",
-        // accelerator: isMac ? "Command+Q" : "Ctrl+Q", // Shortcut for quitting the app
-        accelerator: "CmdOrCtrl+Q", // Shorter-cut for quitting, should work on all platforms
-        click() {
-          app.quit();
+  ...(isMac
+    ? [
+        {
+          label: app.name,
+          submenu: [
+            {
+              label: "About",
+              click: () => {
+                createAboutWindow();
+              },
+            },
+            { type: "separator" },
+            { role: "quit" },
+          ],
         },
-      },
-    ],
-  },
-  {
-    label: "Edit",
-    submenu: [
-      {
-        role: "undo",
-      },
-      {
-        role: "redo",
-      },
-      {
-        type: "separator",
-      },
-      {
-        role: "cut",
-      },
-      {
-        role: "copy",
-      },
-      {
-        role: "paste",
-      },
-    ],
-  },
+      ]
+    : []),
+  { role: "fileMenu" },
+  ...(isWin
+    ? [
+        {
+          label: "Help",
+          submenu: [
+            {
+              label: "About",
+              click: () => {
+                createAboutWindow();
+              },
+            },
+          ],
+        },
+      ]
+    : []),
   ...(isDev
     ? [
         {
-          label: "View",
+          label: "Developer",
           submenu: [
-            {
-              role: "reload",
-            },
-            {
-              role: "forcereload",
-            },
-            {
-              role: "toggledevtools",
-            },
+            { role: "reload" },
+            { role: "forcereload" },
+            { type: "separator" },
+            { role: "toggledevtools" },
           ],
         },
       ]
