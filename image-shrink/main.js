@@ -1,149 +1,155 @@
-const path = require('path')
-const os = require('os')
-const { app, BrowserWindow, Menu, ipcMain, shell } = require('electron')
-const imagemin = require('imagemin')
-const imageminMozjpeg = require('imagemin-mozjpeg')
-const imageminPngquant = require('imagemin-pngquant')
-const slash = require('slash')
-const log = require('electron-log')
+// const path = require("path");
 
-// Set env
-process.env.NODE_ENV = 'production'
+// // Import the reload logic
+// require("./utils/reload")();
 
-const isDev = process.env.NODE_ENV !== 'production' ? true : false
-const isMac = process.platform === 'darwin' ? true : false
+const {
+  app,
+  BrowserWindow,
+  Menu,
+  ipcMain,
+  globalShortcut,
+} = require("electron");
 
-let mainWindow
-let aboutWindow
+// Set the environment variable to development
+process.env.NODE_ENV = "development";
+
+const isDev = process.env.NODE_ENV !== "production" ? true : false;
+const isMac = process.platform === "darwin" ? true : false;
+const isWin = process.platform === "win32" ? true : false;
+const isLinux = process.platform === "linux" ? true : false;
+
+let mainWindow;
 
 function createMainWindow() {
-  mainWindow = new BrowserWindow({
-    title: 'ImageShrink',
-    width: isDev ? 800 : 500,
-    height: 600,
-    icon: `${__dirname}/assets/icons/Icon_256x256.png`,
-    resizable: isDev ? true : false,
-    backgroundColor: 'white',
-    webPreferences: {
-      nodeIntegration: true,
-      contextIsolation: false
-    },
-  })
+  function createWindow() {
+    mainWindow = new BrowserWindow({
+      title: "Image Shrink",
+      width: 800,
+      height: 600,
+      icon: `${__dirname}/assets/icons/png/Icon_256x256.png`,
+      resizable: isDev,
+      backgroundColor: "#fff",
+    });
 
-  if (isDev) {
-    mainWindow.webContents.openDevTools()
+    // Load the index.html file from the app directory
+    // mainWindow.loadURL(`file://${__dirname}/app/index.html`);
+
+    // Load the index.html file using the path module to resolve the correct path.
+    mainWindow.loadFile("./app/index.html");
   }
 
-  mainWindow.loadFile('./app/index.html')
+  // Call createWindow when the app is ready
+  createWindow();
 }
 
-function createAboutWindow() {
-  aboutWindow = new BrowserWindow({
-    title: 'About ImageShrink',
-    width: 300,
-    height: 300,
-    icon: `${__dirname}/assets/icons/Icon_256x256.png`,
-    resizable: false,
-    backgroundColor: 'white',
-  })
+// // Ensure the createMainWindow function is called when the app is ready
+// app.on("ready", createMainWindow);
 
-  aboutWindow.loadFile('./app/about.html')
-}
+// Garbage collection, point to null when closed
+app.on("ready", () => {
+  createMainWindow();
 
-app.on('ready', () => {
-  createMainWindow()
+  const mainMenu = Menu.buildFromTemplate(menu);
+  Menu.setApplicationMenu(mainMenu);
 
-  const mainMenu = Menu.buildFromTemplate(menu)
-  Menu.setApplicationMenu(mainMenu)
+  globalShortcut.register("CmdOrCtrl+R", () => {
+    mainWindow.reload();
+  });
 
-  mainWindow.on('close', () => (mainWindow = null))
-})
+  globalShortcut.register(isMac ? "Command+Alt+I" : "Ctrl+Shift+I", () => {
+    mainWindow.toggleDevTools();
+  });
+
+  mainWindow.on("ready", () => {
+    mainWindow = null;
+  });
+});
 
 const menu = [
-  ...(isMac
-    ? [
-        {
-          label: app.name,
-          submenu: [
-            {
-              label: 'About',
-              click: createAboutWindow,
-            },
-          ],
-        },
-      ]
-    : []),
+  ...(isMac ? [{ role: "appMenu" }] : []),
   {
-    role: 'fileMenu',
-  },
-  ...(!isMac
-    ? [
-        {
-          label: 'Help',
-          submenu: [
-            {
-              label: 'About',
-              click: createAboutWindow,
-            },
-          ],
+    label: "File",
+    submenu: [
+      {
+        label: "Quit",
+        // accelerator: isMac ? "Command+Q" : "Ctrl+Q", // Shortcut for quitting the app
+        accelerator: "CmdOrCtrl+Q", // Shorter-cut for quitting, should work on all platforms
+        click() {
+          app.quit();
         },
-      ]
-    : []),
+      },
+    ],
+  },
+  {
+    label: "Edit",
+    submenu: [
+      {
+        role: "undo",
+      },
+      {
+        role: "redo",
+      },
+      {
+        type: "separator",
+      },
+      {
+        role: "cut",
+      },
+      {
+        role: "copy",
+      },
+      {
+        role: "paste",
+      },
+    ],
+  },
   ...(isDev
     ? [
         {
-          label: 'Developer',
+          label: "View",
           submenu: [
-            { role: 'reload' },
-            { role: 'forcereload' },
-            { type: 'separator' },
-            { role: 'toggledevtools' },
+            {
+              role: "reload",
+            },
+            {
+              role: "forcereload",
+            },
+            {
+              role: "toggledevtools",
+            },
           ],
         },
       ]
     : []),
-]
+];
 
-ipcMain.on('image:minimize', (e, options) => {
-  options.dest = path.join(os.homedir(), 'imageshrink')
-  shrinkImage(options)
-})
+// This is another way to add the developer menu
+// if (isDev) {
+//   menu.push({
+//     label: "Developer",
+//     submenu: [
+//       {
+//         role: "reload",
+//       },
+//       {
+//         role: "forcereload",
+//       },
+//       {
+//         role: "toggledevtools",
+//       },
+//     ],
+//   });
+// }
 
-async function shrinkImage({ imgPath, quality, dest }) {
-  try {
-    const pngQuality = quality / 100
-
-    const files = await imagemin([slash(imgPath)], {
-      destination: dest,
-      plugins: [
-        imageminMozjpeg({ quality }),
-        imageminPngquant({
-          quality: [pngQuality, pngQuality],
-        }),
-      ],
-    })
-
-    log.info(files)
-
-//     Changed from shell.openItem() for v9
-    shell.openPath(dest)
-
-    mainWindow.webContents.send('image:done')
-  } catch (err) {
-    log.error(err)
-  }
-}
-
-app.on('window-all-closed', () => {
-  if (!isMac) {
-    app.quit()
-  }
-})
-
-app.on('activate', () => {
+app.on("activate", () => {
   if (BrowserWindow.getAllWindows().length === 0) {
-    createMainWindow()
+    createMainWindow();
   }
-})
+});
 
-app.allowRendererProcessReuse = true
+app.on("window-all-closed", () => {
+  if (!isMac) {
+    app.quit();
+  }
+});
