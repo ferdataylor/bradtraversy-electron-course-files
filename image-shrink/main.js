@@ -11,8 +11,11 @@ const {
   globalShortcut,
 } = require("electron");
 
+let envType = "development";
+// let envType = "production";
+
 // Set the environment variable to development
-process.env.NODE_ENV = "development";
+process.env.NODE_ENV = envType;
 
 const isDev = process.env.NODE_ENV !== "production" ? true : false;
 const isMac = process.platform === "darwin" ? true : false;
@@ -29,12 +32,21 @@ function createMainWindow() {
   function createWindow() {
     mainWindow = new BrowserWindow({
       title: "Image Shrink",
-      width: 800,
+      width: isDev ? 800 : 600,
       height: 600,
       icon: `${__dirname}/assets/icons/png/Icon_256x256.png`,
       resizable: isDev,
       backgroundColor: "#fff",
+      webPreferences: {
+        nodeIntegration: true, // integrates Node.js into the renderer process
+        contextIsolation: false,
+      },
     });
+
+    // Open the DevTools automatically if in development mode
+    if (isDev) {
+      mainWindow.webContents.openDevTools();
+    }
 
     // Load the index.html file from the app directory
     // mainWindow.loadURL(`file://${__dirname}/app/index.html`);
