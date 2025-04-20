@@ -1,0 +1,16 @@
+  616  npm start
+  617  npm start
+  618  npm list electron
+  619  npm start
+  620  npm start
+  621  npm start
+  622  chmod +x node_modules/.bin/electron
+  623  rm -rf node_modules package-lock.json\nnpm install
+  624  npm install electron-reload@1.5.0 --save-dev
+  625  npm start
+  626  npm start
+  627  npm start
+  628  npm start
+  629  npm start
+  630  npm start
+  631  l
