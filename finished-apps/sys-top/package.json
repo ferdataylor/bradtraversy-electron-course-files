@@ -1,8 +1,8 @@
 {
-  "name": "electron-starter",
-  "productName": "APP NAME",
+  "name": "sys-top",
+  "productName": "SysTop",
   "version": "1.0.0",
-  "description": "Simple starter package for Electron apps",
+  "description": "Monitor your system CPU",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
@@ -17,11 +17,12 @@
   "author": "Brad Traversy",
   "license": "MIT",
   "devDependencies": {
-    "electron": "^9.0.0",
+    "electron": "^8.2.5",
     "electron-packager": "^14.2.1",
     "nodemon": "^2.0.3"
   },
   "dependencies": {
-    "electron-log": "^4.1.2"
+    "electron-log": "^4.1.2",
+    "node-os-utils": "^1.2.2"
   }
 }

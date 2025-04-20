@@ -182,17 +182,7 @@ app.on("window-all-closed", () => {
 // Listen for the image:resize event from the renderer process
 ipcMain.on("image:resize", async (e, options) => {
   try {
-    options.dest = path.join(
-      os.homedir(),
-      "Developer",
-      "javascript-work",
-      "electron-react-work",
-      "udemy",
-      "Electron-From-Scratch",
-      "bradtraversy-electron-course-files",
-      "image-shrink",
-      "resized"
-    );
+    options.dest = path.join(__dirname, "resized");
 
     await shrinkImage(options);
     // Example of sending a response back to the renderer process
